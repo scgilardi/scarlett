@@ -1,18 +1,16 @@
 # scarlett
 
-Provides macros to declare vars in namespaces other than *ns*
+Provides macros to declare vars in namespaces other than `*ns*`
 
 To be used sparingly to overcome otherwise cyclic namespace dependencies
 
 ## Usage
 
+```clojure
 (ns-declare my-module startup shutdown)
 
-(defn start-cli
-  [& args]
-  (my-module/startup args))
-
 (declare+ module-a/startup module-b/startup)
+```
 
 ## License
 
