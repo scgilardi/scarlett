@@ -11,14 +11,14 @@
   "If the namespace bound to *ns* at macro expansion time is not named
   ns-sym, expands to a call to assert-ns* that will report the error
   by throwing an AssertionError at run time. Used to detect cases
-  where a call to in-ns is innefective at compile time because it was
+  where a call to in-ns is ineffective at compile time because it was
   not hoisted to the top-level by the compiler and therefore not
   evaluated before the code that follows it.
 
   Note: macro expanders other than the compiler will include calls to
   assert-ns* in the expansion they produce unless they duplicate the
   compiler's behavior of evaluating forms within top-level do forms
-  independently as if they were top level themselves."
+  independently as if they were top-level themselves."
   [ns-sym]
   (if-not (= (ns-name *ns*) ns-sym)
     `(assert-ns* '~ns-sym)))
