@@ -4,41 +4,48 @@
 
 (def this-ns (ns-name *ns*))
 
-(remove-ns 'ns-a)
+(doseq [ns ['ns-a 'ns-b 'ns-c 'ns-d]]
+  (remove-ns ns))
+
+(defn read-eval
+  "helper to allow compiling at top-level from within tests"
+  [s]
+  (in-ns this-ns)
+  (eval (read-string s)))
 
 (deftest test-assert-ns
+  ;; "in-ns succeeds" here means that the in-ns form changed *ns* before
+  ;; the form after it was *compiled*
+  ;; The tests demonstrate that assert-ns properly reports when in-ns
+  ;; succeeds and when it fails
   (testing "in-ns succeeds when nested only within explicit do's"
-    (is (nil? (eval `(do (do (do (in-ns 'ns-a)
-                                 (assert-ns ns-a)
-                                 nil))))))
-    (in-ns this-ns))
-  (testing "in-ns fails when not at top-level"
+    (is (= :good (read-eval "(do (do (do (in-ns 'ns-a)
+                                         (scarlett.core/assert-ns ns-a)
+                                         :good)))"))))
+  (testing "in-ns fails when it's not do's all the way up"
     (is (thrown-with-msg? AssertionError #"ns-name"
-                          (eval `(identity (in-ns 'ns-a)
-                                           (assert-ns ns-a)))))
-    (in-ns this-ns)))
-
-(remove-ns 'ns-b)
-(ns-declare ns-b a b c)
+                          (read-eval "(do (when true
+                                            (in-ns 'ns-a)
+                                            (scarlett.core/assert-ns ns-a)
+                                            :good))")))))
 
 (deftest test-ns-declare
-  (is (= #{'a 'b 'c} (set (keys (ns-publics 'ns-b)))))
+  (testing "ns-declare succeeds when at the top level"
+    (is nil? (read-eval "(ns-declare ns-b a b c)"))
+    (is (= #{'a 'b 'c} (set (keys (ns-publics 'ns-b))))))
   (testing "ns-declare reports failure when not at top-level"
     (is (thrown-with-msg? AssertionError #"ns-name"
-                          (eval `(identity (ns-declare ns-a a)))))
-    (in-ns this-ns)))
-
-
-(remove-ns 'ns-c)
-(remove-ns 'ns-d)
-(declare+ a b ns-c/a ns-c/b ns-d/a ns-d/b)
+                          (read-eval "(when true (ns-declare ns-a a))")))
+    (is (empty? (ns-publics 'ns-a)))))
 
 (deftest test-declare+
-  (is (contains? (ns-publics this-ns) 'a))
-  (is (contains? (ns-publics this-ns) 'b))
-  (is (= #{'a 'b} (set (keys (ns-publics 'ns-c)))))
-  (is (= #{'a 'b} (set (keys (ns-publics 'ns-d)))))
+  (testing "declare+ succeeds when at the top level"
+    (is nil? (read-eval "(declare+ a b ns-c/a ns-c/b ns-d/a ns-d/b ns-d/c)"))
+    (is (contains? (ns-publics this-ns) 'a))
+    (is (contains? (ns-publics this-ns) 'b))
+    (is (= #{'a 'b} (set (keys (ns-publics 'ns-c)))))
+    (is (= #{'a 'b 'c} (set (keys (ns-publics 'ns-d))))))
   (testing "declare+ reports failure when not at top-level"
     (is (thrown-with-msg? AssertionError #"ns-name"
-                          (eval `(identity (declare+ ns-a/b)))))
-    (in-ns this-ns)))
+                          (read-eval "(when true (declare+ ns-a/b))")))
+    (is (empty? (ns-publics 'ns-a)))))
